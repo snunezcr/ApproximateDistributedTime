@@ -8,6 +8,7 @@ defmodule Adt.History.Repo.Migrations.CreateAdtRecord do
       add :period, :float
       add :timestamp, :float
       add :timediff, :float
+      add :step, :integer
     end
   end
 end
