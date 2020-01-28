@@ -7,8 +7,7 @@ defmodule Adt.Application do
 
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: Adt.Worker.start_link(arg)
-      # {Adt.Worker, arg}
+      Adt.History.Repo,
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
