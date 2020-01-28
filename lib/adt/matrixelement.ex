@@ -4,6 +4,8 @@ defmodule Adt.MatrixElement do
 
   schema "matrixelements" do
     belongs_to :record, Record
-    field :
+    field :pid_me, :string
+    field :pid_ref, :string
+    field :step, :integer
   end
 end
