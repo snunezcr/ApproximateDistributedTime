@@ -1,13 +1,15 @@
 defmodule Adt.Clock do
   use GenServer, restart: :transient
   import Adt.ClockState
+  import Adt.ClockConfig
   alias Adt.ClockState
+  alias Adt.ClockConfig
 
   @me __MODULE__
 
   # API
-  def start_link({wt, rs, nt, nw, ns}) do
-    GenServer.start_link(@me, {wt, rs, nt, nw, ns}, name: @me)
+  def start_link(%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}) do
+    GenServer.start_link(@me, %ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns})
   end
 
   def start() do
@@ -30,32 +32,33 @@ defmodule Adt.Clock do
     GenServer.cast @me, :stop
   end
 
-  def timer(state, req) do
-    %ClockState{withtimer: wt, now: t, tmr: tm, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns} = state
+  defp set_timer(config, state, req) do
+      %ClockConfig{withtimer: wt, res: _, nav_tick: nt, nav_watch: _, nav_set: _} = config
+      %ClockState{now: t, tmr: tm} = state
 
     if wt do
       if req < 10*nt do
         # If the noise average is less than 10 times higher, we do not introduce noise
         MicroTimer.usleep(req)
-        %ClockState{withtimer: wt, now: t, tmr: req, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}
+        %ClockState{now: t, tmr: req}
       else
         wait = req + round(abs(:rand.normal(nt, :math.sqrt(nt))))
         MicroTimer.usleep(wait)
-        %ClockState{withtimer: wt, now: t, tmr: wait, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}
+        %ClockState{now: t, tmr: wait}
       end
     else
-      %ClockState{withtimer: wt, now: t, tmr: tm, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}
+      %ClockState{now: t, tmr: tm}
     end
   end
 
   # server
-  def init({wt, rs, nt, nw, ns}) do
+  def init(%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}) do
     IO.puts "Clock initialized"
-    {:ok, %ClockState{withtimer: wt, now: 0, tmr: 0, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}}
+    {:ok, { %ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, %ClockState{now: 0, tmr: 0}}}
   end
 
-  defp increment(state) do
-    %ClockState{withtimer: _, now: _, tmr: _, res: rs, nav_tick: nt, nav_watch: _, nav_set: _} = state
+  defp increment(config) do
+    %ClockConfig{withtimer: _, res: rs, nav_tick: nt, nav_watch: _, nav_set: _} = config
 
     # Generate a random deviate with the square root of the noise average as standard deviation
     ndev = round(abs(:rand.normal(nt, :math.sqrt(nt)))) + rs
@@ -72,39 +75,41 @@ defmodule Adt.Clock do
     GenServer.cast @me, :tick
   end
 
-  def handle_cast(:tick, state) do
-    increment(state)
+  def handle_cast(:tick, {config, state}) do
+    increment(config)
     schedule_tick()
-    {:noreply, state}
+    {:noreply, {config, state}}
   end
 
-  def handle_cast(:stop, state) do
-    {:stop, "Clock operation finalized", state}
+  def handle_cast(:stop, {config, state}) do
+    {:stop, "Clock operation finalized", {config, state}}
   end
 
-  def handle_cast({:increment, inc}, state) do
-    %ClockState{withtimer: wt, now: t, tmr: tm, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns} = state
-    {:noreply, %ClockState{withtimer: wt, now: t + inc, tmr: tm, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}}
+  def handle_cast({:increment, inc}, {config, state}) do
+    %ClockState{now: t, tmr: tm} = state
+    {:noreply, {config, %ClockState{now: t + inc, tmr: tm}}}
   end
 
-  def handle_call(:watch, _from, state) do
-    %ClockState{withtimer: wt, now: t, tmr: tm, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns} = state
+  def handle_call(:watch, _from, {config, state}) do
+    %ClockConfig{withtimer: _, res: _, nav_tick: _, nav_watch: nw, nav_set: _} = config
+    %ClockState{now: t, tmr: tm} = state
     # Introduce a small amount of variance from watching the clock
-    wdev = round(abs(:rand.normal(nt, :math.sqrt(nw))))
-    new_state = %ClockState{withtimer: wt, now: t + wdev, tmr: tm, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}
+    wdev = round(abs(:rand.normal(nw, :math.sqrt(nw))))
+    new_state = %ClockState{now: t + wdev, tmr: tm}
     {:reply, new_state, new_state}
   end
 
-  def handle_call({:set, new_now}, _from, state) do
-    %ClockState{withtimer: wt, now: _, tmr: tm, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns} = state
+  def handle_call({:set, new_now}, _from, {config, state}) do
+    %ClockConfig{withtimer: _, res: _, nav_tick: _, nav_watch: _, nav_set: ns} = config
+    %ClockState{now: _, tmr: tm} = state
     # Introduce a slightly larger amount of variance from setting the clock
-    sdev = round(abs(:rand.normal(nt, :math.sqrt(nw))))
-    new_state = %ClockState{withtimer: wt, now: new_now + sdev, tmr: tm, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}
-    {:reply, new_state, new_state}
+    sdev = round(abs(:rand.normal(ns, :math.sqrt(ns))))
+    new_state = %ClockState{now: new_now + sdev, tmr: tm}
+    {:reply, new_state, {config, new_state}}
   end
 
-  def handle_call({:timer, millis}, _from, state) do
-    new_state = timer(state, millis)
-    {:reply, new_state, new_state}
+  def handle_call({:timer, millis}, _from, {config, state}) do
+    new_state = set_timer(config, state, millis)
+    {:reply, new_state, {config, new_state}}
   end
 end

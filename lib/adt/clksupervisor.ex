@@ -13,7 +13,8 @@ defmodule Adt.ClockSupervisor do
 
   def create_clock({wt, rs, nt, nw, ns}) do
     spec = { Adt.Clock, {wt, rs, nt, nw, ns}}
-    {:ok, _pid} = DynamicSupervisor.start_child(@me, spec)
+    {:ok, pid} = DynamicSupervisor.start_child(@me, spec)
+    pid
   end
 
   def all_clocks() do
