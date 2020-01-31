@@ -1,7 +1,6 @@
 defmodule Adt.Clock do
   use GenServer, restart: :transient
   import Adt.ClockState
-  import MicroTimer
   alias Adt.ClockState
 
   @me __MODULE__
