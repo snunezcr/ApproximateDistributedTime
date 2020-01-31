@@ -5,14 +5,18 @@ defmodule Adt.Application do
 
   use Application
 
+  @registry :clocks_registry
+
   def start(_type, _args) do
     children = [
-      Adt.History.Repo,
+      { Registry, [keys: :unique, name: @registry]},
+      { Adt.ClockSupervisor, []},
+      Adt.History.Repo
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: Adt.Supervisor]
+    opts = [strategy: :one_for_all, name: Adt.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

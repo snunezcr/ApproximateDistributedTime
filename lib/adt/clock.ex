@@ -8,7 +8,7 @@ defmodule Adt.Clock do
   @me __MODULE__
 
   # API
-  def start_link(%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}) do
+  def start_link(%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, clk_id) do
     GenServer.start_link(@me, %ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns})
   end
 
@@ -112,4 +112,7 @@ defmodule Adt.Clock do
     new_state = set_timer(config, state, millis)
     {:reply, new_state, {config, new_state}}
   end
+
+  defp via_tuple(name) ,
+    do: {:via, Registry, {@registry, name} }
 end
