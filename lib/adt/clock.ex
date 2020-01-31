@@ -6,30 +6,31 @@ defmodule Adt.Clock do
   alias Adt.ClockConfig
 
   @me __MODULE__
+  @registry :clocks_registry
 
   # API
   def start_link(%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, clk_id) do
-    GenServer.start_link(@me, %ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns})
+    GenServer.start_link @me, [%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, clk_id], name: via_tuple(clk_id)
   end
 
-  def start() do
-    GenServer.cast(@me, :tick)
+  def start(clk_id) do
+    GenServer.cast(via_tuple(clk_id), :tick)
   end
 
-  def watch() do
-    GenServer.call(@me, :watch)
+  def watch(clk_id) do
+    GenServer.call(via_tuple(clk_id), :watch)
   end
 
-  def set(new_now) do
-    GenServer.call(@me, {:watch, new_now})
+  def set(clk_id, new_now) do
+    GenServer.call(via_tuple(clk_id), {:watch, new_now})
   end
 
-  def timer(millis) do
-    GenServer.call @me, {:timer, millis}
+  def timer(clk_id, millis) do
+    GenServer.call via_tuple(clk_id), {:timer, millis}
   end
 
-  def stop() do
-    GenServer.cast @me, :stop
+  def stop(clk_id) do
+    GenServer.cast via_tuple(clk_id), :stop
   end
 
   defp set_timer(config, state, req) do
@@ -52,12 +53,12 @@ defmodule Adt.Clock do
   end
 
   # server
-  def init(%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}) do
+  def init([%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, clk_id]) do
     IO.puts "Clock initialized"
-    {:ok, { %ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, %ClockState{now: 0, tmr: 0}}}
+    {:ok, {%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, %ClockState{now: 0, tmr: 0}, clk_id}}
   end
 
-  defp increment(config) do
+  defp increment(clk_id, config) do
     %ClockConfig{withtimer: _, res: rs, nav_tick: nt, nav_watch: _, nav_set: _} = config
 
     # Generate a random deviate with the square root of the noise average as standard deviation
@@ -67,52 +68,52 @@ defmodule Adt.Clock do
     MicroTimer.usleep(ndev)
     IO.puts "Tick length: #{ndev}\n"
 
-    GenServer.cast @me, {:increment, ndev}
+    GenServer.cast via_tuple(clk_id), {:increment, ndev}
   end
 
-  defp schedule_tick() do
+  defp schedule_tick(clk_id) do
     IO.puts "ticking"
-    GenServer.cast @me, :tick
+    GenServer.cast via_tuple(clk_id), :tick
   end
 
-  def handle_cast(:tick, {config, state}) do
-    increment(config)
-    schedule_tick()
-    {:noreply, {config, state}}
+  def handle_cast(:tick, {config, state, clk_id}) do
+    increment(clk_id, config)
+    schedule_tick(clk_id)
+    {:noreply, {clk_id, config, state}}
   end
 
-  def handle_cast(:stop, {config, state}) do
-    {:stop, "Clock operation finalized", {config, state}}
+  def handle_cast(:stop, {clk_id, config, state}) do
+    {:stop, "Clock operation finalized", {clk_id, config, state}}
   end
 
-  def handle_cast({:increment, inc}, {config, state}) do
+  def handle_cast({:increment, inc}, {clk_id, config, state}) do
     %ClockState{now: t, tmr: tm} = state
-    {:noreply, {config, %ClockState{now: t + inc, tmr: tm}}}
+    {:noreply, {clk_id, config, %ClockState{now: t + inc, tmr: tm}}}
   end
 
-  def handle_call(:watch, _from, {config, state}) do
+  def handle_call(:watch, _from, {clk_id, config, state}) do
     %ClockConfig{withtimer: _, res: _, nav_tick: _, nav_watch: nw, nav_set: _} = config
     %ClockState{now: t, tmr: tm} = state
     # Introduce a small amount of variance from watching the clock
     wdev = round(abs(:rand.normal(nw, :math.sqrt(nw))))
     new_state = %ClockState{now: t + wdev, tmr: tm}
-    {:reply, new_state, new_state}
+    {:reply, new_state, {clk_id, config, new_state}}
   end
 
-  def handle_call({:set, new_now}, _from, {config, state}) do
+  def handle_call({:set, new_now}, _from, {clock_id, config, state}) do
     %ClockConfig{withtimer: _, res: _, nav_tick: _, nav_watch: _, nav_set: ns} = config
     %ClockState{now: _, tmr: tm} = state
     # Introduce a slightly larger amount of variance from setting the clock
     sdev = round(abs(:rand.normal(ns, :math.sqrt(ns))))
     new_state = %ClockState{now: new_now + sdev, tmr: tm}
-    {:reply, new_state, {config, new_state}}
+    {:reply, new_state, {clock_id, config, new_state}}
   end
 
-  def handle_call({:timer, millis}, _from, {config, state}) do
+  def handle_call({:timer, millis}, _from, {clock_id, config, state}) do
     new_state = set_timer(config, state, millis)
-    {:reply, new_state, {config, new_state}}
+    {:reply, new_state, {clock_id, config, new_state}}
   end
 
-  defp via_tuple(name) ,
+  defp via_tuple(name),
     do: {:via, Registry, {@registry, name} }
 end
