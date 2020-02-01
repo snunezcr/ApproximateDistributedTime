@@ -5,11 +5,13 @@ defmodule Adt.Application do
 
   use Application
 
-  @registry :clocks_registry
+  @registry_clk :clocks_registry
+  @registry_obs :observers_registry
 
   def start(_type, _args) do
     children = [
-      { Registry, [keys: :unique, name: @registry]},
+      { Registry, [keys: :unique, name: @registry_clk]},
+      { Registry, [keys: :unique, name: @registry_obs]},
       { Adt.ClockSupervisor, []},
       Adt.History.Repo
     ]
