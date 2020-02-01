@@ -1,7 +1,9 @@
 defmodule Adt.ObserverState do
-  defstruct id: "",
+  defstruct id: 0,
             now: 0,
             frefs: [],
             prefs: [],
-            clock: nil
+            last_chkp: 0,
+            k_now: 0,
+            b_now: 0
 end

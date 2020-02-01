@@ -13,6 +13,7 @@ defmodule Adt.Application do
       { Registry, [keys: :unique, name: @registry_clk]},
       { Registry, [keys: :unique, name: @registry_obs]},
       { Adt.ClockSupervisor, []},
+      { Adt.ObserverSupervisor, []},
       Adt.History.Repo
     ]
 
