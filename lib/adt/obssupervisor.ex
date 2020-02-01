@@ -2,8 +2,6 @@ defmodule Adt.ObserverSupervisor do
   use DynamicSupervisor
   import Adt.ClockConfig
   import Adt.ObserverConfig
-  alias Adt.ClockConfig
-  alias Adt.ObserverConfig
 
   @me __MODULE__
 
@@ -15,8 +13,9 @@ defmodule Adt.ObserverSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
-  def observer_name(id) do
-    "observer_#{id}"
+  def create_observer(obs_id, clk_config, obs_config) do
+    spec = {Adt.Clock, [obs_id, clk_config, obs_config]}
+    DynamicSupervisor.start_child(@me, spec)
   end
 
   def all_observers() do

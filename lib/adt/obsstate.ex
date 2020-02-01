@@ -1,5 +1,5 @@
 defmodule Adt.ObserverState do
-  defstruct id: 0,
+  defstruct epoch: 0,
             now: 0,
             frefs: [],
             prefs: [],

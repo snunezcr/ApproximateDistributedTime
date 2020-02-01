@@ -11,8 +11,8 @@ defmodule Adt.ClockSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
-  def create_clock(clk_config, id) do
-    spec = {Adt.Clock, [clk_config, id]}
+  def create_clock(clk_id, clk_config) do
+    spec = {Adt.Clock, [clk_id, clk_config]}
     DynamicSupervisor.start_child(@me, spec)
   end
 

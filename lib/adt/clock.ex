@@ -9,8 +9,8 @@ defmodule Adt.Clock do
   @registry_clk :clocks_registry
 
   # API
-  def start_link([config, clk_id]) do
-    GenServer.start_link @me, [config, clk_id], name: via_tuple(clk_id)
+  def start_link([clk_id, config]) do
+    GenServer.start_link @me, [clk_id, config], name: via_tuple(clk_id)
   end
 
   def start(clk_id) do
@@ -48,7 +48,7 @@ defmodule Adt.Clock do
   end
 
   # server
-  def init([config, clk_id]) do
+  def init([clk_id, config]) do
     {:ok, {clk_id, config, %ClockState{now: 0, tmr: 0}}}
   end
 

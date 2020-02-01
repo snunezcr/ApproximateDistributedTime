@@ -13,5 +13,6 @@ defmodule Adt.ObserverConfig do
             strat: Update.Fixed,
             aggr: Aggregation.Avg,
             bmax: 3,
-            btime: 25000
+            btime: 25000,
+            tobs: 1
 end
