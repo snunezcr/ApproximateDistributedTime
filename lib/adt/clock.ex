@@ -38,14 +38,10 @@ defmodule Adt.Clock do
       %ClockState{now: t, tmr: tm} = state
 
     if wt do
-      if req < 10*nt do
-        MicroTimer.usleep(req)
-        %ClockState{now: t, tmr: req}
-      else
-        wait = req + round(abs(:rand.normal(nt, :math.sqrt(nt))))
-        MicroTimer.usleep(wait)
-        %ClockState{now: t, tmr: wait}
-      end
+      # We use the clock smallest possible standard deviation as the amplitude for timer noise
+      wait = round(abs(:rand.normal(req, :math.sqrt(nt))))
+      MicroTimer.usleep(wait)
+      %ClockState{now: t, tmr: wait}
     else
       %ClockState{now: t, tmr: tm}
     end
@@ -53,7 +49,6 @@ defmodule Adt.Clock do
 
   # server
   def init([config, clk_id]) do
-    IO.puts "Clock initialized"
     {:ok, {clk_id, config, %ClockState{now: 0, tmr: 0}}}
   end
 

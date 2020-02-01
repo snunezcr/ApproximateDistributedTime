@@ -1,7 +1,5 @@
 defmodule Adt.ClockSupervisor do
   use DynamicSupervisor
-  import Adt.ClockConfig
-  alias Adt.ClockConfig
 
   @me __MODULE__
 
