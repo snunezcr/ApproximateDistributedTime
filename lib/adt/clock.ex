@@ -6,11 +6,11 @@ defmodule Adt.Clock do
   alias Adt.ClockConfig
 
   @me __MODULE__
-  @registry :clocks_registry
+  @registry_clk :clocks_registry
 
   # API
-  def start_link(%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, clk_id) do
-    GenServer.start_link @me, [%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, clk_id], name: via_tuple(clk_id)
+  def start_link([config, clk_id]) do
+    GenServer.start_link @me, [config, clk_id], name: via_tuple(clk_id)
   end
 
   def start(clk_id) do
@@ -22,7 +22,7 @@ defmodule Adt.Clock do
   end
 
   def set(clk_id, new_now) do
-    GenServer.call(via_tuple(clk_id), {:watch, new_now})
+    GenServer.call(via_tuple(clk_id), {:set, new_now})
   end
 
   def timer(clk_id, millis) do
@@ -39,7 +39,6 @@ defmodule Adt.Clock do
 
     if wt do
       if req < 10*nt do
-        # If the noise average is less than 10 times higher, we do not introduce noise
         MicroTimer.usleep(req)
         %ClockState{now: t, tmr: req}
       else
@@ -53,30 +52,23 @@ defmodule Adt.Clock do
   end
 
   # server
-  def init([%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, clk_id]) do
+  def init([config, clk_id]) do
     IO.puts "Clock initialized"
-    {:ok, {%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, %ClockState{now: 0, tmr: 0}, clk_id}}
+    {:ok, {clk_id, config, %ClockState{now: 0, tmr: 0}}}
   end
 
   defp increment(clk_id, config) do
     %ClockConfig{withtimer: _, res: rs, nav_tick: nt, nav_watch: _, nav_set: _} = config
-
-    # Generate a random deviate with the square root of the noise average as standard deviation
     ndev = round(abs(:rand.normal(nt, :math.sqrt(nt)))) + rs
-
-    # Wait the required amount of microseconds
     MicroTimer.usleep(ndev)
-    IO.puts "Tick length: #{ndev}\n"
-
     GenServer.cast via_tuple(clk_id), {:increment, ndev}
   end
 
   defp schedule_tick(clk_id) do
-    IO.puts "ticking"
     GenServer.cast via_tuple(clk_id), :tick
   end
 
-  def handle_cast(:tick, {config, state, clk_id}) do
+  def handle_cast(:tick, {clk_id, config, state}) do
     increment(clk_id, config)
     schedule_tick(clk_id)
     {:noreply, {clk_id, config, state}}
@@ -115,5 +107,5 @@ defmodule Adt.Clock do
   end
 
   defp via_tuple(name),
-    do: {:via, Registry, {@registry, name} }
+    do: {:via, Registry, {@registry_clk, name} }
 end

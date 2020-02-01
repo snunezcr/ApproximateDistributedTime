@@ -17,9 +17,9 @@ defmodule Adt.ClockSupervisor do
     "clock_#{id}"
   end
 
-  def create_clock(%ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, id) do
-    spec = {Adt.Clock, %ClockConfig{withtimer: wt, res: rs, nav_tick: nt, nav_watch: nw, nav_set: ns}, clock_name(id)}
-    {:ok, pid} = DynamicSupervisor.start_child(@me, spec)
+  def create_clock(clk_config, id) do
+    spec = {Adt.Clock, [clk_config, clock_name(id)]}
+    DynamicSupervisor.start_child(@me, spec)
   end
 
   def all_clocks() do
