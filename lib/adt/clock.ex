@@ -14,15 +14,15 @@ defmodule Adt.Clock do
   end
 
   def start(clk_id) do
-    GenServer.cast(via_tuple(clk_id), :tick)
+    GenServer.cast via_tuple(clk_id), :tick
   end
 
   def watch(clk_id) do
-    GenServer.call(via_tuple(clk_id), :watch)
+    GenServer.call via_tuple(clk_id), :watch
   end
 
   def set(clk_id, new_now) do
-    GenServer.call(via_tuple(clk_id), {:set, new_now})
+    GenServer.call via_tuple(clk_id), {:set, new_now}
   end
 
   def timer(clk_id, millis) do
